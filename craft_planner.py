@@ -2,6 +2,8 @@ import json
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
 from heapq import heappop, heappush
+from math import inf
+from random import choice
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
@@ -106,21 +108,49 @@ def graph(state):
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
 
+def make_heuristic(goal, recipes):
 
-def heuristic(state, action, is_goal, tools_in_goal):
-    # Implement your heuristic here!
+    total_resource_cost = {}
+    breakdown_items_dict = {}
+    #work in progress
 
-    if not action:
-        return 0;
+    for item in goal:
+        for name, r in recipes.items():
+            if item in r['Produces']:
+                for item2 in r['Requires']:
+                    breakdown_items_dict[item2] = 1
+                for item2 in r['Consumes']:
+                    breakdown_items_dict[item2] = r['Consumes'][item2]
 
-    if is_goal(state):
-        return 0
+    for key in breakdown_items_dict
 
-    if action.name in make_tools.keys() and tools_in_goal is False:
-        if state[make_tools[action.name]] > 1:
-            return 2000
 
-    return 0
+    print(breakdown_items_dict)
+    while len(breakdown_items_dict) > 0:
+
+
+    print('prioritizing ', needed_items)
+
+
+    def heuristic(state, action):
+        # Implement your heuristic here!
+
+        if action.name in make_tools.keys():
+            if action.effect(state)[make_tools[action.name]] > 1:
+                return inf
+            elif action.effect(state)[make_tools[action.name]] is 1 and state[make_tools[action.name]] is 0:
+                return 0
+        new_state = action.effect(state)
+
+        for item in needed_items:
+            if state[item] is 0 and new_state[item] is not 0:
+                return 0
+
+        return 1
+
+    return heuristic
+
+
 
 def search(graph, state, is_goal, limit, heuristic):
 
@@ -156,7 +186,7 @@ def search(graph, state, is_goal, limit, heuristic):
             # get current node with cost
             current_priority, current_cost, current_state, parent_action = heappop(queue)
 
-            print(current_state)
+            #print(current_state)
 
             # construct and return path when goal is reached
             if is_goal(current_state):
@@ -193,7 +223,7 @@ def search(graph, state, is_goal, limit, heuristic):
                         cost = current_cost + r.cost
 
                         # get priority with heuristic
-                        priority = cost + heuristic(new_state, r, is_goal, False)
+                        priority = cost + heuristic(current_state, r)
 
                         # push next state with parent action
                         heappush(queue, (priority, cost, new_state, r))
@@ -242,15 +272,11 @@ if __name__ == '__main__':
     state['Time'] = 0
     state.update(Crafting['Initial'])
 
-    # test rules
-    #for r in all_recipes:
-    #    print(r.name)
-    #    print(r.check(state))
-    #    if r.check(state):
-    #        print(r.effect(state))
+    # generate hueristic
+    heuristic = make_heuristic(Crafting['Goal'], Crafting['Recipes'])
 
     # Search for a solution
-    resulting_plan = search(graph, state, is_goal, 600, heuristic)
+    resulting_plan = search(graph, state, is_goal, 30, heuristic)
 
     if resulting_plan:
         # Print resulting plan
