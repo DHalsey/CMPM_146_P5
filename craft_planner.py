@@ -2,7 +2,7 @@ import json
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
 from heapq import heappop, heappush
-from math import inf
+from math import inf, ceil
 from random import choice
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
@@ -111,23 +111,63 @@ def graph(state):
 def make_heuristic(goal, recipes):
 
     total_resource_cost = {}
-    breakdown_items_dict = {}
-    #work in progress
+    items_to_parse = []
+    tool_req = {}
+    for keys in goal.keys():
+        items_to_parse.append([keys, goal[keys]]);
+    print(items_to_parse)
+    print("TOTAL COST BEFORE: " , total_resource_cost)
+    print("PARSE ITEMS BEFORE: " , items_to_parse,"\n")
+    print()
 
-    for item in goal:
+    while items_to_parse:
+        item,amount = items_to_parse.pop(0)
+        temp_worst_item = 0
+        temp_worst_time = 0
         for name, r in recipes.items():
             if item in r['Produces']:
-                for item2 in r['Requires']:
-                    breakdown_items_dict[item2] = 1
-                for item2 in r['Consumes']:
-                    breakdown_items_dict[item2] = r['Consumes'][item2]
+                min_makeable = r['Produces'][item] #the minimum of the item that can be made (IE 4 planks)
+                if 'Requires' in r:
+                    for item2 in r['Requires']:
+                        if r['Time'] > temp_worst_time:
+                            temp_worst_time = r['Time']
+                            temp_worst_item = item2
+                if 'Consumes' in r:
+                    for item2 in r['Consumes']:
+                        if(item2 in total_resource_cost): #combine totals if it already exists
+                            numToMake = r['Consumes'][item2]*ceil(amount/r['Produces'][item])
+                            total_resource_cost[item2] += numToMake #add in consumables to dict for the number needed
+                            items_to_parse.append([item2, numToMake])
+                        else:
+                            numToMake = r['Consumes'][item2]*ceil(amount/r['Produces'][item])
+                            total_resource_cost[item2] = numToMake #create the new item if it didnt exist
+                            items_to_parse.append([item2, numToMake])
+        if temp_worst_time > 0 and temp_worst_item not in tool_req:
+            print(temp_worst_item)
+            total_resource_cost[temp_worst_item] = 1
+            items_to_parse.append([temp_worst_item,1])
+            tool_req[temp_worst_item] = 1
 
-    for key in breakdown_items_dict
+    temp_resources = []
+    print("TOTAL COST AFTER: " , total_resource_cost)
+    for item in total_resource_cost:
+        print(item)
+        for name, r in recipes.items():
+            if item in r['Produces']:
+                if 'Consumes' in r:
+                    temp_resources.append(item)
+    for item in temp_resources:
+        if item in total_resource_cost:
+            total_resource_cost.pop(item)
+    print("TOTAL COST AFTER: " , total_resource_cost)
+    print("PARSE ITEMS AFTER: " , items_to_parse,"\n")
+    print("toolReq: ", tool_req)
+    print()
 
-
-    print(breakdown_items_dict)
-    while len(breakdown_items_dict) > 0:
-
+    #while items_to_parse: #loop while we still need to parse more items
+    
+    
+    #while len(breakdown_items_dict) > 0:
 
     print('prioritizing ', needed_items)
 
