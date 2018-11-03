@@ -161,8 +161,8 @@ def make_heuristic(goal, recipes):
         state_cost = {}
         state_parse = []
         state_tool_req = {}
-        list_of_tools = {'bench','wooden_pickaxe','stone_pickaxe','iron_pickaxe','wooden_axe','stone_axe','iron_axe','furnace'}
-        time.sleep(5)
+        #list_of_tools = {'bench','wooden_pickaxe','stone_pickaxe','iron_pickaxe','wooden_axe','stone_axe','iron_axe','furnace'}
+
         for keys in temp_state.keys():
             if temp_state[keys] > 0 and keys is not 'Time':
                 state_parse.append([keys, temp_state[keys]])
@@ -209,7 +209,7 @@ def make_heuristic(goal, recipes):
                     heuristic_cost -= state_cost[key_state]
                 else:
                     heuristic_cost -= total_resource_cost[key_state]
-        return heuristic_cost
+        return heuristic_cost*5
     return heuristic
 
 
@@ -248,7 +248,7 @@ def search(graph, state, is_state, limit, heuristic):
             # get current node with cost
             current_priority, current_cost, current_state, parent_action = heappop(queue)
 
-            print(current_state) #DEBUG TO SHOW OUTPUT
+            #print(current_state) #DEBUG TO SHOW OUTPUT
 
             # construct and return path when goal is reached
             if is_goal(current_state):
@@ -263,6 +263,11 @@ def search(graph, state, is_state, limit, heuristic):
                 path.insert(0, (temp_state, temp_action))
 
                 # construct path from backpointers
+                if temp_action is None:
+                    print(time(), " seconds")
+                    print(0, " steps")
+                    return path
+
                 while backpointers[(temp_state, temp_action)][1] is not None:
                     temp_state, temp_action = backpointers[(temp_state, temp_action)]
                     path.insert(0, (temp_state, temp_action.name))
