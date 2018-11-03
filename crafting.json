@@ -1,8 +1,9 @@
 {
  "Initial": {
+  "wood": 2
  },
  "Goal": {
-   "wooden_pickaxe": 3
+   "iron_pickaxe": 1
  },
  "Items": [
    "bench",

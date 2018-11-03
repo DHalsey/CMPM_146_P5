@@ -109,16 +109,14 @@ def graph(state):
             yield (r.name, r.effect(state), r.cost)
 
 def make_heuristic(goal, recipes):
-
+    total_items = 0
     total_resource_cost = {}
     items_to_parse = []
     tool_req = {}
     for keys in goal.keys():
         items_to_parse.append([keys, goal[keys]]);
-    print(items_to_parse)
-    print("TOTAL COST BEFORE: " , total_resource_cost)
-    print("PARSE ITEMS BEFORE: " , items_to_parse,"\n")
-    print()
+        total_resource_cost[keys] = goal[keys]
+        total_items += goal[keys]
 
     while items_to_parse:
         item,amount = items_to_parse.pop(0)
@@ -135,64 +133,88 @@ def make_heuristic(goal, recipes):
                 if 'Consumes' in r:
                     for item2 in r['Consumes']:
                         if(item2 in total_resource_cost): #combine totals if it already exists
-                            numToMake = r['Consumes'][item2]*ceil(amount/r['Produces'][item])
+                            numToMake = r['Consumes'][item2]*amount/r['Produces'][item]
                             total_resource_cost[item2] += numToMake #add in consumables to dict for the number needed
+                            total_items+=numToMake
                             items_to_parse.append([item2, numToMake])
                         else:
-                            numToMake = r['Consumes'][item2]*ceil(amount/r['Produces'][item])
+                            numToMake = r['Consumes'][item2]*amount/r['Produces'][item]
                             total_resource_cost[item2] = numToMake #create the new item if it didnt exist
+                            total_items+=numToMake
                             items_to_parse.append([item2, numToMake])
         if temp_worst_time > 0 and temp_worst_item not in tool_req:
-            print(temp_worst_item)
             total_resource_cost[temp_worst_item] = 1
+            total_items+=1
             items_to_parse.append([temp_worst_item,1])
             tool_req[temp_worst_item] = 1
-
-    temp_resources = []
-    print("TOTAL COST AFTER: " , total_resource_cost)
-    for item in total_resource_cost:
-        print(item)
-        for name, r in recipes.items():
-            if item in r['Produces']:
-                if 'Consumes' in r:
-                    temp_resources.append(item)
-    for item in temp_resources:
-        if item in total_resource_cost:
-            total_resource_cost.pop(item)
-    print("TOTAL COST AFTER: " , total_resource_cost)
-    print("PARSE ITEMS AFTER: " , items_to_parse,"\n")
-    print("toolReq: ", tool_req)
-    print()
 
     #while items_to_parse: #loop while we still need to parse more items
     
     
     #while len(breakdown_items_dict) > 0:
 
-    print('prioritizing ', needed_items)
 
 
     def heuristic(state, action):
         # Implement your heuristic here!
+        temp_state = action.effect(state)
+        state_cost = {}
+        state_parse = []
+        state_tool_req = {}
+        list_of_tools = {'bench','wooden_pickaxe','stone_pickaxe','iron_pickaxe','wooden_axe','stone_axe','iron_axe','furnace'}
+        time.sleep(5)
+        for keys in temp_state.keys():
+            if temp_state[keys] > 0 and keys is not 'Time':
+                state_parse.append([keys, temp_state[keys]])
+                state_cost[keys] = temp_state[keys]
 
-        if action.name in make_tools.keys():
-            if action.effect(state)[make_tools[action.name]] > 1:
-                return inf
-            elif action.effect(state)[make_tools[action.name]] is 1 and state[make_tools[action.name]] is 0:
-                return 0
-        new_state = action.effect(state)
+        while state_parse:
+            item,amount = state_parse.pop(0)
+            temp_worst_item = 0
+            temp_worst_time = 0
+            for name, r in recipes.items():
+                if item in r['Produces']:
+                    min_makeable = r['Produces'][item] #the minimum of the item that can be made (IE 4 planks)
+                    """if 'Requires' in r:
+                        for item2 in r['Requires']:
+                            if r['Time'] > temp_worst_time:
+                                temp_worst_time = r['Time']
+                                temp_worst_item = item2"""
+                    if 'Consumes' in r:
+                        for item2 in r['Consumes']:
+                            if(item2 in state_cost): #combine totals if it already exists
+                                numToMake = r['Consumes'][item2]*amount/r['Produces'][item]
+                                state_cost[item2] += numToMake #add in consumables to dict for the number needed
+                                state_parse.append([item2, numToMake])
+                            else:
+                                numToMake = r['Consumes'][item2]*amount/r['Produces'][item]
+                                state_cost[item2] = numToMake #create the new item if it didnt exist
+                                state_parse.append([item2, numToMake])
+            if temp_worst_time > 0 and temp_worst_item not in state_tool_req:
+                state_cost[temp_worst_item] = 1
+                state_parse.append([temp_worst_item,1])
+                state_tool_req[temp_worst_item] = 1
 
-        for item in needed_items:
-            if state[item] is 0 and new_state[item] is not 0:
-                return 0
 
-        return 1
-
+        """print("TOTAL COST GOAL: " , total_resource_cost)
+        print("PARSE ITEMS GOAL: " , items_to_parse,)
+        print("TOTAL COST STATE: " , state_cost)
+        print("PARSE ITEMS STATE: " , state_parse,"\n")
+        print()"""
+        heuristic_cost = total_items
+        for key_state in state_cost.keys():
+            if key_state in total_resource_cost.keys():
+                difference = total_resource_cost[key_state] - state_cost[key_state]
+                if difference >= 0:
+                    heuristic_cost -= state_cost[key_state]
+                else:
+                    heuristic_cost -= total_resource_cost[key_state]
+        return heuristic_cost
     return heuristic
 
 
 
-def search(graph, state, is_goal, limit, heuristic):
+def search(graph, state, is_state, limit, heuristic):
 
     start_time = time()
 
@@ -226,7 +248,7 @@ def search(graph, state, is_goal, limit, heuristic):
             # get current node with cost
             current_priority, current_cost, current_state, parent_action = heappop(queue)
 
-            #print(current_state)
+            print(current_state) #DEBUG TO SHOW OUTPUT
 
             # construct and return path when goal is reached
             if is_goal(current_state):
